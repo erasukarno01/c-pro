@@ -706,11 +706,15 @@ export type Database = {
           created_at: string
           created_by: string | null
           ended_at: string | null
+          group_id: string | null
           hourly_target: number
           id: string
+          leader_user_id: string | null
           leader_operator_id: string | null
           line_id: string
           notes: string | null
+          plan_finish_at: string | null
+          plan_start_at: string | null
           product_id: string
           shift_id: string
           started_at: string | null
@@ -723,11 +727,15 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           ended_at?: string | null
+          group_id?: string | null
           hourly_target?: number
           id?: string
+          leader_user_id?: string | null
           leader_operator_id?: string | null
           line_id: string
           notes?: string | null
+          plan_finish_at?: string | null
+          plan_start_at?: string | null
           product_id: string
           shift_id: string
           started_at?: string | null
@@ -740,11 +748,15 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           ended_at?: string | null
+          group_id?: string | null
           hourly_target?: number
           id?: string
+          leader_user_id?: string | null
           leader_operator_id?: string | null
           line_id?: string
           notes?: string | null
+          plan_finish_at?: string | null
+          plan_start_at?: string | null
           product_id?: string
           shift_id?: string
           started_at?: string | null
@@ -754,6 +766,20 @@ export type Database = {
           work_order?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shift_runs_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_runs_leader_user_id_fkey"
+            columns: ["leader_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "shift_runs_leader_operator_id_fkey"
             columns: ["leader_operator_id"]

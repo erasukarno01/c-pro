@@ -7,17 +7,28 @@
  *   features/input/types.ts               — shared types and constants
  */
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ArrowRight, Factory, Send, Loader2, Users, XCircle, AlertCircle,
 } from "lucide-react";
 import { InlineLoading, EmptyState } from "@/components/ui/states";
+import { Button } from "@/components/ui/button";
 import { MonitoringErrorBoundary } from "@/components/error/MonitoringErrorBoundary";
 import { TimeInput } from "@/components/ui/time-input";
 import { DateInput } from "@/components/ui/date-input";
 import { useAuth } from "@/contexts/AuthContext";
 import { useShiftSetup } from "@/features/input/hooks/useShiftSetup";
 import type { SetupStep } from "@/features/input/types";
+import {
+  useCreateDowntimeEntry,
+  useCreateNgEntry,
+  useDowntimeEntries,
+  useHourlyOutputs,
+  useNgEntries,
+  useSubmitEosr,
+  useUpsertHourlyOutput,
+} from "@/hooks/useShiftRun";
+import { DowntimeModal, EosrModal, NgEntryModal } from "@/components/modals/ShiftModals";
 
 // ─── Local UI helpers ─────────────────────────────────────────────────────────
 
@@ -100,7 +111,7 @@ export default function ShiftPage() {
 function ShiftPageContent() {
   const setup = useShiftSetup();
   const {
-    activeTab, setupStep, setSetupStep,
+    activeTab, setActiveTab, activeRun, setupStep, setSetupStep,
     step1, setStep1, step1Errors, clearE, validateStep1,
     checkedItems, setCheckedItems, checkGroups, totalChecks,
     setupNotes, setSetupNotes, setupBusy, createRun, handleStartShift,
@@ -111,6 +122,25 @@ function ShiftPageContent() {
     linePOS, posLoading, resolvedGroupId, resolvedGroupCode,
     posOpAssignments, setPosOpAssignments,
   } = setup;
+
+  const runId = activeRun?.id;
+  const { data: hourlyOutputs = [] } = useHourlyOutputs(runId);
+  const { data: ngEntries = [] } = useNgEntries(runId);
+  const { data: downtimeEntries = [] } = useDowntimeEntries(runId);
+  const upsertHourly = useUpsertHourlyOutput(runId);
+  const createNg = useCreateNgEntry(runId);
+  const createDowntime = useCreateDowntimeEntry(runId);
+  const submitEosr = useSubmitEosr(runId);
+
+  const [ngOpen, setNgOpen] = useState(false);
+  const [dtOpen, setDtOpen] = useState(false);
+  const [eosrOpen, setEosrOpen] = useState(false);
+
+  const totalActual = hourlyOutputs.reduce((sum, h) => sum + (h.is_break ? 0 : h.actual_qty), 0);
+  const totalNg = ngEntries.reduce((sum, n) => sum + n.qty, 0);
+  const totalDowntime = downtimeEntries.reduce((sum, d) => sum + d.duration_minutes, 0);
+  const targetQty = activeRun?.target_qty ?? 0;
+  const oeeEstimate = targetQty > 0 ? Math.min(100, (totalActual / targetQty) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-slate-50 p-4">
@@ -605,6 +635,162 @@ function ShiftPageContent() {
               )}
 
             </SectionCard>
+          </div>
+        )}
+
+        {activeTab !== "setup" && activeRun && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h2 className="text-lg font-bold">Run Berjalan</h2>
+                  <p className="text-xs text-muted-foreground">
+                    WO {activeRun.work_order || "-"} · Target {targetQty} · Status {activeRun.status}
+                  </p>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {["first_check", "output", "ng", "downtime", "last_check", "summary"].map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setActiveTab(tab as any)}
+                      className={`px-3 py-1.5 rounded-lg text-xs border ${
+                        activeTab === tab ? "bg-primary text-primary-foreground border-primary" : "bg-background"
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {activeTab === "first_check" && (
+              <SectionCard title="5 First / Autonomous First" icon={Factory} badge="Start Check">
+                <p className="text-sm text-muted-foreground">
+                  Jalankan check awal, lalu lanjut ke input output per jam.
+                </p>
+                <div className="mt-4">
+                  <Button onClick={() => setActiveTab("output")}>Lanjut ke Output</Button>
+                </div>
+              </SectionCard>
+            )}
+
+            {activeTab === "output" && (
+              <SectionCard title="Input Output Per Jam" icon={Factory} badge="Hourly">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs text-muted-foreground">Total Output</div>
+                      <div className="text-xl font-bold">{totalActual}</div>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs text-muted-foreground">Total NG</div>
+                      <div className="text-xl font-bold">{totalNg}</div>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs text-muted-foreground">Total Downtime (min)</div>
+                      <div className="text-xl font-bold">{totalDowntime}</div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() =>
+                      upsertHourly.mutate({
+                        hour_index: hourlyOutputs.length,
+                        hour_label: `${String(7 + hourlyOutputs.length).padStart(2, "0")}:00`,
+                        actual_qty: 0,
+                        ng_qty: 0,
+                        downtime_minutes: 0,
+                        is_break: false,
+                        note: null,
+                      })
+                    }
+                  >
+                    Tambah Slot Jam
+                  </Button>
+                </div>
+              </SectionCard>
+            )}
+
+            {activeTab === "ng" && (
+              <SectionCard title="Input NG" icon={Factory} badge="Quality">
+                <div className="space-y-3">
+                  <div className="text-sm">Total entri NG: {ngEntries.length}</div>
+                  <Button onClick={() => setNgOpen(true)}>Tambah NG</Button>
+                </div>
+              </SectionCard>
+            )}
+
+            {activeTab === "downtime" && (
+              <SectionCard title="Input Downtime" icon={Factory} badge="Losses">
+                <div className="space-y-3">
+                  <div className="text-sm">Total entri downtime: {downtimeEntries.length}</div>
+                  <Button onClick={() => setDtOpen(true)}>Tambah Downtime</Button>
+                </div>
+              </SectionCard>
+            )}
+
+            {activeTab === "last_check" && (
+              <SectionCard title="5 Last / Autonomous Last" icon={Factory} badge="End Check">
+                <p className="text-sm text-muted-foreground">
+                  Selesaikan check akhir sebelum submit EOSR.
+                </p>
+                <div className="mt-4">
+                  <Button onClick={() => setActiveTab("summary")}>Lanjut ke Summary</Button>
+                </div>
+              </SectionCard>
+            )}
+
+            {activeTab === "summary" && (
+              <SectionCard title="Summary & EOSR" icon={Factory} badge="Close Shift">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+                  <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Actual</div><div className="text-lg font-bold">{totalActual}</div></div>
+                  <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Target</div><div className="text-lg font-bold">{targetQty}</div></div>
+                  <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">NG</div><div className="text-lg font-bold">{totalNg}</div></div>
+                  <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Downtime</div><div className="text-lg font-bold">{totalDowntime}</div></div>
+                </div>
+                <Button onClick={() => setEosrOpen(true)}>Submit EOSR</Button>
+              </SectionCard>
+            )}
+
+            <NgEntryModal
+              open={ngOpen}
+              onOpenChange={setNgOpen}
+              productId={activeRun.product_id}
+              onSubmit={async (payload) => {
+                await createNg.mutateAsync(payload);
+              }}
+            />
+            <DowntimeModal
+              open={dtOpen}
+              onOpenChange={setDtOpen}
+              onSubmit={async (payload) => {
+                await createDowntime.mutateAsync(payload);
+              }}
+            />
+            <EosrModal
+              open={eosrOpen}
+              onOpenChange={setEosrOpen}
+              shift_run_id={activeRun.id}
+              summary={{
+                actual_output: totalActual,
+                target_output: targetQty,
+                total_ng: totalNg,
+                total_downtime: totalDowntime,
+                oee: oeeEstimate,
+              }}
+              onSubmit={async (notes) => {
+                await submitEosr.mutateAsync({
+                  totalActual,
+                  totalNg,
+                  totalDowntime,
+                  oee: oeeEstimate,
+                  targetQty,
+                  notes,
+                  leaderName: "Leader",
+                });
+              }}
+            />
           </div>
         )}
       </div>

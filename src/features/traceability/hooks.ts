@@ -21,7 +21,7 @@ export function useSearchWO(term: string) {
         .order("started_at", { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data ?? []) as TraceRun[];
+      return (data ?? []) as unknown as TraceRun[];
     },
   });
 }
@@ -57,7 +57,7 @@ export function useTraceNg(runId: string | null) {
         .eq("shift_run_id", runId!)
         .order("found_at");
       if (error) throw error;
-      return (data ?? []) as TraceNg[];
+      return (data ?? []) as unknown as TraceNg[];
     },
   });
 }
@@ -77,7 +77,7 @@ export function useTraceDowntime(runId: string | null) {
         .eq("shift_run_id", runId!)
         .order("started_at");
       if (error) throw error;
-      return (data ?? []) as TraceDowntime[];
+      return (data ?? []) as unknown as TraceDowntime[];
     },
   });
 }

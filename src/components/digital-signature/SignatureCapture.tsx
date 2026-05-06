@@ -176,17 +176,6 @@ export function SignatureCapture({
     onClear?.();
   }, [getContext, onClear]);
 
-  // Public methods via ref
-  const toDataURL = useCallback((): string | null => {
-    const canvas = canvasRef.current;
-    if (!canvas || !hasSignature) return null;
-    return canvas.toDataURL("image/png");
-  }, [hasSignature]);
-
-  const isEmpty = useCallback((): boolean => {
-    return !hasSignature;
-  }, [hasSignature]);
-
   // Prevent scrolling on touch devices while drawing
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -267,5 +256,3 @@ export function SignatureCapture({
   );
 }
 
-// Export ref methods type
-export type { SignatureRef };

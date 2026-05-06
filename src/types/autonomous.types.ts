@@ -32,7 +32,7 @@ export interface CheckItem {
   category: string;
   title: string;
   description: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'failed';
+  status: 'pending' | 'in-progress' | 'completed' | 'fail';
   priority: CheckPriority;
   estimatedTime: number;
   actualTime?: number;
@@ -184,7 +184,6 @@ export function mapDbCategoryToUICategory(category: string): CheckItem["category
     "Keperluan Material": "material",
     "5S": "5s",
     "Work Instruction": "wi",
-    "Work Instruction": "wi",
   };
   return categoryMap[category] ?? "machine";
 }
@@ -204,10 +203,10 @@ export function mapUICategoryToDBCategory(category: string): string {
 export function calculateCompliance(results: CheckItemResult[]): ComplianceSummary {
   const total = results.length;
   const passed = results.filter(r => r.status === "pass" || r.status === "completed").length;
-  const failed = results.filter(r => r.status === "fail" || r.status === "failed").length;
+  const failed = results.filter(r => r.status === "fail").length;
   const na = results.filter(r => r.status === "na").length;
   const criticalTotal = results.filter(r => r.is_critical).length;
-  const criticalFailed = results.filter(r => r.is_critical && (r.status === "fail" || r.status === "failed")).length;
+  const criticalFailed = results.filter(r => r.is_critical && r.status === "fail").length;
   const validTotal = total - na;
   const rate = validTotal > 0 ? Math.round((passed / validTotal) * 100) : 0;
 

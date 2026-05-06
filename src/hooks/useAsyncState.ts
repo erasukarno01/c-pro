@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 
 export interface AsyncState<T> {
   data: T | null;
@@ -11,19 +11,12 @@ export interface AsyncState<T> {
 }
 
 export interface AsyncStateOptions {
-  /** Whether to retry failed requests automatically */
   autoRetry?: boolean;
-  /** Maximum number of retry attempts */
   maxRetries?: number;
-  /** Delay between retries in milliseconds */
   retryDelay?: number;
-  /** Whether to cache successful responses */
   cache?: boolean;
-  /** Cache duration in milliseconds */
   cacheDuration?: number;
-  /** Whether to show loading state on refetch */
   showLoadingOnRefetch?: boolean;
-  /** Custom error messages */
   errorMessages?: {
     network?: string;
     timeout?: string;
@@ -33,37 +26,39 @@ export interface AsyncStateOptions {
 }
 
 export interface UseAsyncStateReturn<T> extends AsyncState<T> {
-  /** Execute the async operation */
   execute: (asyncFn: () => Promise<T>) => Promise<void>;
-  /** Retry the last operation */
   retry: () => Promise<void>;
-  /** Reset the state */
   reset: () => void;
-  /** Refetch data (clear cache and execute) */
   refetch: () => Promise<void>;
-  /** Set data manually */
   setData: (data: T) => void;
-  /** Set error manually */
   setError: (error: string) => void;
-  /** Clear error */
   clearError: () => void;
 }
 
-/**
- * Comprehensive async state management hook
- * Handles loading, error, empty, retry, and caching states
- */
-export function useAsyncState<T>(
-  options: AsyncStateOptions = {}
-): UseAsyncStateReturn<T> {
+function getDefaultErrorMessage(error: unknown, errorMessages?: AsyncStateOptions["errorMessages"]) {
+  const e = error as { name?: string; message?: string; status?: number };
+  if (!e) return errorMessages?.default || "Terjadi kesalahan yang tidak diketahui";
+  if (e.name === "TypeError" || e.message?.toLowerCase().includes("fetch")) {
+    return errorMessages?.network || "Koneksi bermasalah. Periksa internet Anda.";
+  }
+  if (e.name === "TimeoutError" || e.message?.toLowerCase().includes("timeout")) {
+    return errorMessages?.timeout || "Request timeout. Coba lagi.";
+  }
+  if ((e.status || 0) >= 500) {
+    return errorMessages?.server || "Server error. Coba lagi nanti.";
+  }
+  return e.message || errorMessages?.default || "Terjadi kesalahan yang tidak diketahui";
+}
+
+export function useAsyncState<T>(options: AsyncStateOptions = {}): UseAsyncStateReturn<T> {
   const {
     autoRetry = false,
     maxRetries = 3,
     retryDelay = 1000,
     cache = true,
-    cacheDuration = 5 * 60 * 1000, // 5 minutes
+    cacheDuration = 5 * 60 * 1000,
     showLoadingOnRefetch = true,
-    errorMessages = {}
+    errorMessages,
   } = options;
 
   const [state, setState] = useState<AsyncState<T>>({
@@ -73,111 +68,91 @@ export function useAsyncState<T>(
     isEmpty: true,
     isInitialLoad: true,
     lastUpdated: null,
-    retryCount: 0
+    retryCount: 0,
   });
 
   const lastAsyncFnRef = useRef<(() => Promise<T>) | null>(null);
   const cacheDataRef = useRef<{ data: T; timestamp: number } | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
 
-  const getErrorMessage = useCallback((error: unknown): string => {
-    if (!error) return errorMessages.default || "Terjadi kesalahan yang tidak diketahui";
-    
-    if (error.name === 'TypeError' || error.message?.includes('fetch')) {
-      return errorMessages.network || "Koneksi error. Periksa koneksi internet Anda.";
-    }
-    
-    if (error.name === 'TimeoutError' || error.message?.includes('timeout')) {
-      return errorMessages.timeout || "Request timeout. Silakan coba lagi.";
-    }
-    
-    if (error.status >= 500) {
-      return errorMessages.server || "Server error. Silakan coba lagi nanti.";
-    }
-    
-    if (error.message) {
-      return error.message;
-    }
-    
-    return errorMessages.default || "Terjadi kesalahan yang tidak diketahui";
+  const execute = useCallback(
+    async (asyncFn: () => Promise<T>) => {
+      lastAsyncFnRef.current = asyncFn;
 
-  }, [errorMessages]);
+      if (cache && cacheDataRef.current) {
+        const age = Date.now() - cacheDataRef.current.timestamp;
+        if (age < cacheDuration) {
+          setState((prev) => ({
+            ...prev,
+            data: cacheDataRef.current!.data,
+            loading: false,
+            error: null,
+            isEmpty: Array.isArray(cacheDataRef.current!.data) ? cacheDataRef.current!.data.length === 0 : !cacheDataRef.current!.data,
+            isInitialLoad: false,
+            lastUpdated: new Date(cacheDataRef.current!.timestamp),
+          }));
+          return;
+        }
+      }
 
-  const execute = useCallback(async (asyncFn: () => Promise<T>) => {
-    lastAsyncFnRef.current = asyncFn;
+      setState((prev) => ({
+        ...prev,
+        loading: true,
+        error: null,
+      }));
 
-    // Check cache first
-    if (cache && cacheDataRef.current) {
-      const { data, timestamp } = cacheDataRef.current;
-      const now = Date.now();
-      
-      if (now - timestamp < cacheDuration) {
-        setState(prev => ({
-          ...prev,
-          data,
+      try {
+        const result = await asyncFn();
+        if (cache) {
+          cacheDataRef.current = { data: result, timestamp: Date.now() };
+        }
+        setState({
+          data: result,
           loading: false,
           error: null,
-          isEmpty: false,
+          isEmpty: Array.isArray(result) ? result.length === 0 : !result,
           isInitialLoad: false,
-          lastUpdated: new Date(timestamp)
+          lastUpdated: new Date(),
+          retryCount: 0,
+        });
+      } catch (error) {
+        const message = getDefaultErrorMessage(error, errorMessages);
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: message,
+          isEmpty: true,
+          isInitialLoad: false,
+          retryCount: prev.retryCount + 1,
         }));
-        return;
+
+        if (autoRetry) {
+          setState((prev) => {
+            if (prev.retryCount >= maxRetries) return prev;
+            const nextRetryCount = prev.retryCount;
+            if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = window.setTimeout(() => {
+              if (lastAsyncFnRef.current) void execute(lastAsyncFnRef.current);
+            }, retryDelay * Math.pow(2, nextRetryCount));
+            return prev;
+          });
+        }
       }
-    }
+    },
+    [autoRetry, cache, cacheDuration, errorMessages, maxRetries, retryDelay],
+  );
 
-    setState(prev => ({
-      ...prev,
-      loading: true,
-      error: null,
-      isInitialLoad: prev.isInitialLoad && prev.data === null
-    }));
-
-    try {
-      const result = await asyncFn();
-      
-      // Update cache
-      if (cache) {
-        cacheDataRef.current = {
-          data: result,
-          timestamp: Date.now()
-        };
-      }
-
-      setState(prev => ({
-        ...prev,
-        data: result,
-        loading: false,
-        error: null,
-        isEmpty: !result || (Array.isArray(result) && result.length === 0),
-        isInitialLoad: false,
-        lastUpdated: new Date(),
-        retryCount: 0
-      }));
-    } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage,
-        isEmpty: true,
-        isInitialLoad: false,
-        retryCount: prev.retryCount + 1
-      }));
-
-      // Auto retry if enabled and within limits
-      if (autoRetry && state.retryCount < maxRetries) {
-          retry();
-        }, retryDelay * Math.pow(2, state.retryCount)); // Exponential backoff
-      }
-    }
-  }, [cache, cacheDuration, autoRetry, maxRetries, retryDelay, state.retryCount, getErrorMessage]);
-
-    if (lastAsyncFnRef.current) {
-      await execute(lastAsyncFnRef.current);
-    }
+  const retry = useCallback(async () => {
+    if (lastAsyncFnRef.current) await execute(lastAsyncFnRef.current);
   }, [execute]);
 
   const reset = useCallback(() => {
+    if (retryTimerRef.current) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    cacheDataRef.current = null;
+    lastAsyncFnRef.current = null;
     setState({
       data: null,
       loading: false,
@@ -185,59 +160,50 @@ export function useAsyncState<T>(
       isEmpty: true,
       isInitialLoad: true,
       lastUpdated: null,
-      retryCount: 0
+      retryCount: 0,
     });
-    cacheDataRef.current = null;
-    lastAsyncFnRef.current = null;
   }, []);
 
   const refetch = useCallback(async () => {
     cacheDataRef.current = null;
-    if (lastAsyncFnRef.current) {
-      if (showLoadingOnRefetch) {
-        await execute(lastAsyncFnRef.current);
-      } else {
-        // Execute without showing loading state
-        setState(prev => ({ ...prev, loading: false }));
-        await execute(lastAsyncFnRef.current);
-      }
+    if (!lastAsyncFnRef.current) return;
+    if (showLoadingOnRefetch) {
+      await execute(lastAsyncFnRef.current);
+      return;
     }
+
+    setState((prev) => ({ ...prev, loading: false }));
+    await execute(lastAsyncFnRef.current);
   }, [execute, showLoadingOnRefetch]);
 
-  const setData = useCallback((data: T) => {
-    setState(prev => ({
-      ...prev,
-      data,
-      loading: false,
-      error: null,
-      isEmpty: !data || (Array.isArray(data) && data.length === 0),
-      isInitialLoad: false,
-      lastUpdated: new Date()
-    }));
-    
-    if (cache) {
-      cacheDataRef.current = {
+  const setData = useCallback(
+    (data: T) => {
+      if (cache) cacheDataRef.current = { data, timestamp: Date.now() };
+      setState({
         data,
-        timestamp: Date.now()
-      };
-    }
-  }, [cache]);
+        loading: false,
+        error: null,
+        isEmpty: Array.isArray(data) ? data.length === 0 : !data,
+        isInitialLoad: false,
+        lastUpdated: new Date(),
+        retryCount: 0,
+      });
+    },
+    [cache],
+  );
 
   const setError = useCallback((error: string) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       loading: false,
       error,
       isEmpty: true,
-      isInitialLoad: false
+      isInitialLoad: false,
     }));
   }, []);
 
   const clearError = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      error: null
-    }));
+    setState((prev) => ({ ...prev, error: null }));
   }, []);
 
   return {
@@ -248,195 +214,77 @@ export function useAsyncState<T>(
     refetch,
     setData,
     setError,
-    clearError
+    clearError,
   };
 }
 
-/**
- * Hook for paginated async data
- */
 export function usePaginatedAsyncState<T>(
   options: AsyncStateOptions & {
     pageSize?: number;
     initialPage?: number;
-  } = {}
+  } = {},
 ) {
   const { pageSize = 20, initialPage = 1, ...asyncOptions } = options;
-  
   const [page, setPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
-  const lastFetchFnRef = useRef<((page: number, pageSize: number) => Promise<{
+  const lastFetchFnRef = useRef<((pageArg: number, pageSizeArg: number) => Promise<{
     items: T[];
-    pagination: {
-      page: number;
-      totalPages: number;
-      totalItems: number;
-      pageSize: number;
-    };
+    pagination: { page: number; totalPages: number; totalItems: number; pageSize: number };
   }>) | null>(null);
-  
+
   const asyncState = useAsyncState<{
     items: T[];
-    pagination: {
-      page: number;
-      totalPages: number;
-      totalItems: number;
-      pageSize: number;
-    };
+    pagination: { page: number; totalPages: number; totalItems: number; pageSize: number };
   }>(asyncOptions);
 
-  const loadPage = useCallback(async (newPage: number, fetchFn: (page: number, pageSize: number) => Promise<{
-    items: T[];
-    pagination: {
-      page: number;
-      totalPages: number;
-      totalItems: number;
-      pageSize: number;
-    };
-  }>) => {
-    setPage(newPage);
-    lastFetchFnRef.current = fetchFn;
-    
-    await asyncState.execute(async () => {
-      const result = await fetchFn(newPage, pageSize);
-      setTotalPages(result.pagination.totalPages);
-      setTotalItems(result.pagination.totalItems);
-      return result;
-    });
-  }, [asyncState, pageSize]);
+  const fetchPage = useCallback(
+    async (fetchFn: (pageArg: number, pageSizeArg: number) => Promise<{
+      items: T[];
+      pagination: { page: number; totalPages: number; totalItems: number; pageSize: number };
+    }>, targetPage = page) => {
+      lastFetchFnRef.current = fetchFn;
+      await asyncState.execute(async () => {
+        const result = await fetchFn(targetPage, pageSize);
+        setPage(result.pagination.page);
+        setTotalPages(result.pagination.totalPages);
+        setTotalItems(result.pagination.totalItems);
+        return result;
+      });
+    },
+    [asyncState, page, pageSize],
+  );
 
-  const nextPage = useCallback(() => {
+  const nextPage = useCallback(async () => {
     if (page < totalPages && lastFetchFnRef.current) {
-      loadPage(page + 1, lastFetchFnRef.current);
+      await fetchPage(lastFetchFnRef.current, page + 1);
     }
-  }, [page, totalPages, loadPage]);
+  }, [fetchPage, page, totalPages]);
 
-  const prevPage = useCallback(() => {
+  const prevPage = useCallback(async () => {
     if (page > 1 && lastFetchFnRef.current) {
-      loadPage(page - 1, lastFetchFnRef.current);
+      await fetchPage(lastFetchFnRef.current, page - 1);
     }
-  }, [page, loadPage]);
+  }, [fetchPage, page]);
 
-  const goToPage = useCallback((targetPage: number) => {
-    if (targetPage >= 1 && targetPage <= totalPages && lastFetchFnRef.current) {
-      loadPage(targetPage, lastFetchFnRef.current);
-    }
-  }, [loadPage, totalPages]);
+  const goToPage = useCallback(async (targetPage: number) => {
+    if (!lastFetchFnRef.current) return;
+    if (targetPage < 1 || targetPage > totalPages) return;
+    await fetchPage(lastFetchFnRef.current, targetPage);
+  }, [fetchPage, totalPages]);
 
   return {
     ...asyncState,
+    items: asyncState.data?.items ?? [],
     page,
+    pageSize,
     totalPages,
     totalItems,
-    pageSize,
-    loadPage,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
+    fetchPage,
     nextPage,
     prevPage,
     goToPage,
-    hasNextPage: page < totalPages,
-    hasPrevPage: page > 1
-  };
-}
-
-/**
- * Hook for real-time data with WebSocket/SSE
- */
-export function useRealtimeAsyncState<T>(
-  connectFn: () => Promise<{
-    data: T;
-    subscribe: (callback: (data: T) => void) => () => void;
-  }>,
-  options: AsyncStateOptions & {
-    reconnectInterval?: number;
-    maxReconnectAttempts?: number;
-  } = {}
-) {
-  const { reconnectInterval = 5000, maxReconnectAttempts = 10, errorMessages, ...asyncOptions } = options;
-  const [isConnected, setIsConnected] = useState(false);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  
-  const asyncState = useAsyncState<T>(asyncOptions);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const getErrorMessage = (error: any): string => {
-    if (!error) return errorMessages?.default || "Terjadi kesalahan yang tidak diketahui";
-    
-    if (error.name === 'TypeError' || error.message?.includes('fetch')) {
-      return errorMessages?.network || "Koneksi error. Periksa koneksi internet Anda.";
-    }
-    
-    if (error.name === 'TimeoutError' || error.message?.includes('timeout')) {
-      return errorMessages?.timeout || "Request timeout. Silakan coba lagi.";
-    }
-    
-    if (error.status >= 500) {
-      return errorMessages?.server || "Server error. Silakan coba lagi nanti.";
-    }
-    
-    if (error.message) {
-      return error.message;
-    }
-    
-    return errorMessages?.default || "Terjadi kesalahan yang tidak diketahui";
-  };
-
-  const connect = useCallback(async () => {
-    try {
-      const connection = await connectFn();
-      
-      // Set initial data
-      asyncState.setData(connection.data);
-      setIsConnected(true);
-      setReconnectAttempts(0);
-      
-      // Subscribe to updates
-      unsubscribeRef.current = connection.subscribe((data) => {
-        asyncState.setData(data);
-      });
-      
-    } catch (error) {
-      setIsConnected(false);
-      asyncState.setError(getErrorMessage(error));
-      
-      // Auto reconnect
-      if (reconnectAttempts < maxReconnectAttempts) {
-        reconnectTimeoutRef.current = setTimeout(() => {
-          setReconnectAttempts(prev => prev + 1);
-          connect();
-        }, reconnectInterval);
-      }
-    }
-  }, [connectFn, reconnectAttempts, maxReconnectAttempts, reconnectInterval, asyncState, getErrorMessage]);
-
-  const disconnect = useCallback(() => {
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
-    
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    
-    setIsConnected(false);
-  }, []);
-
-  useEffect(() => {
-    connect();
-    
-    return () => {
-      disconnect();
-    };
-  }, [connect, disconnect]);
-
-  return {
-    ...asyncState,
-    isConnected,
-    reconnectAttempts,
-    connect,
-    disconnect
   };
 }

@@ -110,7 +110,7 @@ export function EnhancedStep1InfoDasar({
     if (step1.lineId && userGroups.length > 0 && !step1.groupId) {
       const matchingGroup = userGroups.find(g => g.line_id === step1.lineId);
       if (matchingGroup) {
-        setStep1(prev => ({ ...prev, groupId: matchingGroup.id }));
+        setStep1({ ...step1, groupId: matchingGroup.id });
       }
     }
   }, [step1.lineId, step1.groupId, userGroups, setStep1]);
@@ -209,7 +209,7 @@ export function EnhancedStep1InfoDasar({
                   key={g.id}
                   type="button"
                   onClick={() => {
-                    setStep1(prev => ({ ...prev, groupId: g.id, lineId: g.line_id }));
+                    setStep1({ ...step1, groupId: g.id, lineId: g.line_id });
                   }}
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
@@ -384,7 +384,7 @@ export function EnhancedStep1InfoDasar({
               <optgroup label="—— Semua Group ——">
                 {filteredGroups.filter(g => !userGroups.some(ug => ug.id === g.id)).map((group) => (
                   <option key={group.id} value={group.id}>
-                    {group.name ?? group.code}
+                    {("name" in group ? group.name : undefined) ?? group.code}
                   </option>
                 ))}
               </optgroup>

@@ -85,18 +85,20 @@ export function useUserGroups() {
       if (leaderError) throw leaderError;
 
       // Transform to UserGroup format
-      return (leaderGroups ?? []).map(lg => {
-        const group = lg.groups;
+      return (leaderGroups ?? []).map((lg: any) => {
+        const group = Array.isArray(lg.groups) ? lg.groups[0] : lg.groups;
+        const line = Array.isArray(group?.lines) ? group.lines[0] : group?.lines;
+        if (!group) return null;
         return {
           id: group.id,
           line_id: group.line_id,
           code: group.code,
           sort_order: group.sort_order,
           active: group.active,
-          line: group.lines ?? null,
+          line: line ?? null,
           isLeader: true,
         };
-      });
+      }).filter(Boolean) as UserGroup[];
     },
     enabled: !!user?.id,
     // Refetch every 30 seconds to keep leader assignments fresh

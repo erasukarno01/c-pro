@@ -190,25 +190,25 @@ export function useOEEData(options: UseOEEDataOptions = {}) {
       if (srError) throw srError;
       if (!shiftRuns || shiftRuns.length === 0) return [];
 
-      const shiftRunIds = shiftRuns.map(sr => sr.id);
+      const runIds = shiftRuns.map(sr => sr.id);
 
       // 2. Fetch outputs for these shift runs
       const { data: outputs } = await supabase
         .from("shift_run_outputs")
         .select("shift_run_id, quantity")
-        .in("shift_run_id", shiftRunIds);
+        .in("shift_run_id", runIds);
 
       // 3. Fetch NG entries
       const { data: ngEntries } = await supabase
         .from("shift_run_ng_entries")
         .select("shift_run_id, quantity")
-        .in("shift_run_id", shiftRunIds);
+        .in("shift_run_id", runIds);
 
       // 4. Fetch downtime entries
       const { data: downtimeEntries } = await supabase
         .from("shift_run_downtimes")
         .select("shift_run_id, duration_minutes")
-        .in("shift_run_id", shiftRunIds);
+        .in("shift_run_id", runIds);
 
       // 5. Aggregate outputs/NG/downtime by shift_run_id
       const outputsBySR = new Map<string, number>();

@@ -194,7 +194,7 @@ export function ProcessesTab() {
                     className="flex items-center gap-1.5 text-xs text-primary hover:underline">
                     <BookOpen className="h-3.5 w-3.5 shrink-0" />
                     {reqCount > 0 ? `${reqCount} skill` : "Tambah"}
-                    {gap && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" title="Ada operator belum qualified" />}
+                    {gap && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
                   </button>
                 </td>
                 <td className="px-3 py-2">

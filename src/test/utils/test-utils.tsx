@@ -1,5 +1,6 @@
 import { ReactElement } from "react";
 import { render, RenderOptions } from "@testing-library/react";
+import { vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -109,30 +110,30 @@ export const createMockSkillData = (count = 5, overrides = {}) =>
 export const mockSupabaseAuth = {
   user: createMockUser(),
   session: { user: createMockUser() },
-  signInWithPassword: jest.fn(),
-  signUp: jest.fn(),
-  signOut: jest.fn(),
-  onAuthStateChange: jest.fn(() => ({
-    data: { subscription: { unsubscribe: jest.fn() } },
+  signInWithPassword: vi.fn(),
+  signUp: vi.fn(),
+  signOut: vi.fn(),
+  onAuthStateChange: vi.fn(() => ({
+    data: { subscription: { unsubscribe: vi.fn() } },
   })),
-  getSession: jest.fn(() => ({
+  getSession: vi.fn(() => ({
     data: { session: { user: createMockUser() } },
   })),
 };
 
 export const mockSupabaseClient = {
-  from: jest.fn(() => ({
-    select: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        maybeSingle: jest.fn(() => ({
+  from: vi.fn(() => ({
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        maybeSingle: vi.fn(() => ({
           data: createMockUser(),
           error: null,
         })),
       })),
-      in: jest.fn(() => ({
-        order: jest.fn(() => ({
-          limit: jest.fn(() => ({
-            maybeSingle: jest.fn(() => ({
+      in: vi.fn(() => ({
+        order: vi.fn(() => ({
+          limit: vi.fn(() => ({
+            maybeSingle: vi.fn(() => ({
               data: createMockMonitoringRun(),
               error: null,
             })),
@@ -140,34 +141,34 @@ export const mockSupabaseClient = {
         })),
       })),
     })),
-    insert: jest.fn(() => ({
-      select: jest.fn(() => ({
-        single: jest.fn(() => ({
+    insert: vi.fn(() => ({
+      select: vi.fn(() => ({
+        single: vi.fn(() => ({
           data: { id: "new-id" },
           error: null,
         })),
       })),
     })),
-    update: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        select: jest.fn(() => ({
-          single: jest.fn(() => ({
+    update: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(() => ({
             data: { id: "updated-id" },
             error: null,
           })),
         })),
       })),
     })),
-    delete: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        select: jest.fn(() => ({
+    delete: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        select: vi.fn(() => ({
           data: [],
           error: null,
         })),
       })),
     })),
   })),
-  rpc: jest.fn(() => ({
+  rpc: vi.fn(() => ({
     data: ["super_admin"],
     error: null,
   })),
@@ -184,32 +185,32 @@ export const createMockPermissionHook = (role = "manager") => ({
   isSuperAdmin: role === "super_admin",
   isLeaderOrHigher: ["super_admin", "leader"].includes(role),
   isSupervisorOrHigher: ["super_admin", "leader", "supervisor"].includes(role),
-  hasPermission: jest.fn(() => ({ has: true })),
-  hasAnyPermission: jest.fn(() => ({ has: true })),
-  hasAllPermissions: jest.fn(() => ({ has: true })),
-  canAccessRoute: jest.fn(() => ({ has: true })),
-  getPermissions: jest.fn(() => []),
-  getAllPermissions: jest.fn(() => []),
+  hasPermission: vi.fn(() => ({ has: true })),
+  hasAnyPermission: vi.fn(() => ({ has: true })),
+  hasAllPermissions: vi.fn(() => ({ has: true })),
+  canAccessRoute: vi.fn(() => ({ has: true })),
+  getPermissions: vi.fn(() => []),
+  getAllPermissions: vi.fn(() => []),
 });
 
 // Mock intersection observer
 export const mockIntersectionObserver = () => {
-  const mockIntersectionObserver = jest.fn();
+  const mockIntersectionObserver = vi.fn();
   mockIntersectionObserver.mockReturnValue({
-    observe: jest.fn(),
-    unobserve: jest.fn(),
-    disconnect: jest.fn(),
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
   });
   window.IntersectionObserver = mockIntersectionObserver;
 };
 
 // Mock resize observer
 export const mockResizeObserver = () => {
-  const mockResizeObserver = jest.fn();
+  const mockResizeObserver = vi.fn();
   mockResizeObserver.mockReturnValue({
-    observe: jest.fn(),
-    unobserve: jest.fn(),
-    disconnect: jest.fn(),
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
   });
   window.ResizeObserver = mockResizeObserver;
 };
@@ -220,17 +221,17 @@ export const setupTestMocks = () => {
   mockResizeObserver();
   
   // Mock fetch
-  global.fetch = jest.fn(() =>
+  global.fetch = vi.fn(() =>
     Promise.resolve({
       ok: true,
       status: 200,
       json: () => Promise.resolve({}),
     })
-  ) as jest.Mock;
+  ) as unknown as typeof fetch;
 };
 
 // Cleanup test mocks
 export const cleanupTestMocks = () => {
-  jest.clearAllMocks();
-  jest.restoreAllMocks();
+  vi.clearAllMocks();
+  vi.restoreAllMocks();
 };

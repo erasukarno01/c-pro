@@ -198,7 +198,7 @@ class ErrorHandler {
   /**
    * Handle component errors
    */
-  public handleComponentError(error: Error, errorInfo: ErrorInfo, component?: string): void {
+  public handleComponentError(_error: Error, errorInfo: ErrorInfo, component?: string): void {
     this.handleError({
       type: "component",
       severity: "medium",

@@ -6,22 +6,22 @@
 // ============================================================================
 
 export interface TableMap {
-  profiles: import("@/types/tables").UserProfile;
-  user_roles: import("@/types/tables").UserRole;
-  lines: import("@/types/tables").ProductionLine;
-  groups: import("@/types/tables").Group;
-  products: import("@/types/tables").Product;
-  processes: import("@/types/tables").Process;
-  shifts: import("@/types/tables").Shift;
-  operators: import("@/types/tables").Operator;
-  ng_categories: import("@/types/tables").NgCategory;
-  downtime_categories: import("@/types/tables").DowntimeCategory;
-  check_sheet_templates: import("@/types/tables").CheckSheetTemplate;
-  check_sheet_results: import("@/types/tables").CheckSheetResult;
-  shift_runs: import("@/types/tables").ShiftRun;
-  hourly_outputs: import("@/types/tables").HourlyOutput;
-  ng_entries: import("@/types/tables").NgEntry;
-  downtime_entries: import("@/types/tables").DowntimeEntry;
+  profiles: UserProfile;
+  user_roles: UserRole;
+  lines: ProductionLine;
+  groups: Group;
+  products: Product;
+  processes: Process;
+  shifts: Shift;
+  operators: Operator;
+  ng_categories: NgCategory;
+  downtime_categories: DowntimeCategory;
+  check_sheet_templates: CheckSheetTemplate;
+  check_sheet_results: CheckSheetResult;
+  shift_runs: ShiftRun;
+  hourly_outputs: HourlyOutput;
+  ng_entries: NgEntry;
+  downtime_entries: DowntimeEntry;
 }
 
 export type AppRole = "super_admin" | "leader" | "supervisor" | "manager";

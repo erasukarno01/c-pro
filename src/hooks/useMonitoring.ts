@@ -107,7 +107,7 @@ export async function fetchMonitoringNg(runId: string) {
     .eq("shift_run_id", runId);
   if (error) throw error;
 
-  const rows = (data ?? []) as { qty: number; defect_types: { name: string } | null }[];
+  const rows = (data ?? []) as unknown as { qty: number; defect_types: { name: string } | null }[];
   const agg: Record<string, number> = {};
   let total = 0;
   for (const r of rows) {
@@ -164,7 +164,7 @@ export async function fetchMonitoringNgPaginated(
   if (error) throw error;
 
   return {
-    data: (data ?? []) as MonNgEntry[],
+    data: (data ?? []) as unknown as MonNgEntry[],
     total: count ?? 0,
     page,
     pageSize: validPageSize,
@@ -199,7 +199,7 @@ export async function fetchMonitoringDowntime(runId: string) {
     .eq("shift_run_id", runId);
   if (error) throw error;
 
-  const rows = (data ?? []) as { duration_minutes: number; downtime_categories: { name: string } | null }[];
+  const rows = (data ?? []) as unknown as { duration_minutes: number; downtime_categories: { name: string } | null }[];
   const agg: Record<string, number> = {};
   let total = 0;
   for (const r of rows) {
@@ -260,7 +260,7 @@ export async function fetchMonitoringDowntimePaginated(
   if (error) throw error;
 
   return {
-    data: (data ?? []) as MonDowntimeRaw[],
+    data: (data ?? []) as unknown as MonDowntimeRaw[],
     total: count ?? 0,
     page,
     pageSize: validPageSize,
@@ -295,7 +295,7 @@ export async function fetchMonitoringCheckSheets(runId: string) {
     .select("id, passed, checked_at, check_sheet_templates(kind, label, sort_order)")
     .eq("shift_run_id", runId);
   if (error) throw error;
-  return (data ?? []) as MonCheckResult[];
+  return (data ?? []) as unknown as MonCheckResult[];
 }
 
 export function useMonitoringCheckSheets(runId: string | undefined) {
@@ -383,7 +383,7 @@ export async function fetchMonitoringDowntimeRaw(runId: string) {
     .eq("shift_run_id", runId)
     .order("started_at");
   if (error) throw error;
-  return (data ?? []) as MonDowntimeRaw[];
+  return (data ?? []) as unknown as MonDowntimeRaw[];
 }
 
 export function useMonitoringDowntimeRaw(runId: string | undefined) {

@@ -82,7 +82,7 @@ export function SkillMatrixModal({
       for (const u of toUpdate) { const { error } = await db("operator_skills").update(u.data).eq("id", (u as { id: string }).id); if (error) throw error; }
       if (toInsert.length > 0) { const { error } = await db("operator_skills").insert(toInsert); if (error) throw error; }
       qc.invalidateQueries({ queryKey: ["table", "operator_skills"] });
-      const parts = [];
+      const parts: string[] = [];
       if (toInsert.length) parts.push(`${toInsert.length} baru`);
       if (toUpdate.length) parts.push(`${toUpdate.length} diperbarui`);
       if (toDelete.length) parts.push(`${toDelete.length} dihapus`);

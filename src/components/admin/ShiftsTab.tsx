@@ -78,7 +78,10 @@ export function ShiftsTab() {
   const [editShift, setEditShift] = useState<Shift | null>(null);
 
   const delMutation = useMutation({
-    mutationFn: (id: string) => supabase.from("shifts").delete().eq("id", id).then(r => { if (r.error) throw r.error; }),
+    mutationFn: async (id: string) => {
+      const r = await supabase.from("shifts").delete().eq("id", id);
+      if (r.error) throw r.error;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["shifts-with-breaks"] }),
     onError:   (e: Error) => toast.error(e.message),
   });
@@ -107,7 +110,7 @@ export function ShiftsTab() {
         if (shiftErr) throw shiftErr;
         const shiftId = up.id;
         await supabase.from("shift_breaks").delete().eq("shift_id", shiftId);
-        const brRows = [];
+        const brRows: Array<{ shift_id: string; break_order: number; start_time: string; duration_minutes: number; label: string }> = [];
         for (let i = 1; i <= 3; i++) {
           const start = r[`break${i}_start`]?.trim();
           const dur   = toInt(r[`break${i}_minutes`]);

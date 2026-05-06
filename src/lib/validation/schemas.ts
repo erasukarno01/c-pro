@@ -11,6 +11,8 @@ import { z } from 'zod';
 
 export const baseStringSchema = z.string().min(1, "Required field");
 export const optionalStringSchema = z.string().optional();
+export const optionalStringMax = (max: number, message?: string) =>
+  z.string().max(max, message).optional();
 export const numericSchema = z.number();
 export const numericFromStringSchema = z.string().transform((val) => {
   const num = Number(val);
@@ -87,7 +89,7 @@ export const hourlyOutputSchema = z.object({
   ng_qty: numericSchema.min(0, "NG quantity must be non-negative"),
   target_qty: numericSchema.min(0, "Target quantity must be non-negative"),
   is_break: booleanSchema,
-  note: optionalStringSchema.max(500, "Note too long"),
+  note: optionalStringMax(500, "Note too long"),
   created_at: dateSchema,
   updated_at: dateSchema,
 });
@@ -156,8 +158,8 @@ export const downtimeRawSchema = z.object({
   ended_at: dateSchema.optional(),
   duration_minutes: numericSchema.min(0, "Duration must be non-negative"),
   kind: z.enum(["planned", "unplanned"]),
-  root_cause: optionalStringSchema.max(500, "Root cause too long"),
-  action_taken: optionalStringSchema.max(500, "Action taken too long"),
+  root_cause: optionalStringMax(500, "Root cause too long"),
+  action_taken: optionalStringMax(500, "Action taken too long"),
   created_at: dateSchema,
   updated_at: dateSchema,
 });
@@ -186,7 +188,7 @@ export const checkSheetResultSchema = z.object({
   template_id: uuidSchema,
   checked_at: dateSchema,
   passed: booleanSchema,
-  notes: optionalStringSchema.max(1000, "Notes too long"),
+  notes: optionalStringMax(1000, "Notes too long"),
   created_at: dateSchema,
   updated_at: dateSchema,
 });
@@ -288,7 +290,7 @@ export const updateRunFormSchema = z.object({
 export const checkSheetFormSchema = z.object({
   template_id: uuidSchema,
   passed: booleanSchema,
-  notes: optionalStringSchema.max(1000),
+  notes: optionalStringMax(1000),
 });
 
 export const downtimeFormSchema = z.object({
@@ -296,8 +298,8 @@ export const downtimeFormSchema = z.object({
   started_at: dateSchema,
   ended_at: dateSchema.optional(),
   kind: z.enum(["planned", "unplanned"]),
-  root_cause: optionalStringSchema.max(500),
-  action_taken: optionalStringSchema.max(500),
+  root_cause: optionalStringMax(500),
+  action_taken: optionalStringMax(500),
 });
 
 export const skillFormSchema = z.object({

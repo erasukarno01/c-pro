@@ -59,11 +59,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
     });
   };
 
-  private handleHome = (): void => {
-      // Use React Router Link for proper SPA navigation
-      // This preserves app state and avoids full page reload
-    };
-
   public render(): ReactNode {
     if (this.state.hasError) {
       return (

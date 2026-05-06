@@ -15,7 +15,7 @@ import {
   useMonitoringSkills,
   useMonitoringRealtime,
 } from "@/hooks/useMonitoring";
-import { ProductionCalculations } from "@/features/monitoring/services/productionCalculations";
+import { ProductionCalculations } from "@/features/monitoring/services/production.calculations";
 import { 
   ProductionMetrics, 
   OEEMetrics, 
@@ -115,42 +115,42 @@ export function useMonitoringDashboard(): UseMonitoringDashboardReturn {
   // Calculated Metrics - Memoized for performance
   const productionMetrics = useMemo(() => {
     if (!hourlyRaw.length || !activeRun) return null;
-    return ProductionCalculations.calculateProductionMetrics(hourlyRaw, activeRun);
+    return ProductionCalculations.calculateProductionMetrics(hourlyRaw as any, activeRun as any);
   }, [hourlyRaw, activeRun, currentTime]);
 
   const oeeMetrics = useMemo(() => {
     if (!hourlyRaw.length || !activeRun) return null;
-    return ProductionCalculations.calculateOEEMetrics(hourlyRaw, dtAgg, activeRun);
+    return ProductionCalculations.calculateOEEMetrics(hourlyRaw as any, dtAgg as any, activeRun as any);
   }, [hourlyRaw, dtAgg, activeRun]);
 
   const qualityMetrics = useMemo(() => {
     if (!hourlyRaw.length) return null;
-    return ProductionCalculations.calculateQualityMetrics(hourlyRaw, ngAgg);
+    return ProductionCalculations.calculateQualityMetrics(hourlyRaw as any, ngAgg as any);
   }, [hourlyRaw, ngAgg]);
 
   const downtimeMetrics = useMemo(() => {
-    return ProductionCalculations.calculateDowntimeMetrics(dtAgg);
+    return ProductionCalculations.calculateDowntimeMetrics(dtAgg as any);
   }, [dtAgg]);
 
   // Transformed Data - Memoized for performance
   const statusChecks = useMemo(() => {
-    return ProductionCalculations.transformCheckSheets(checkSheets, "5F5L");
+    return ProductionCalculations.transformCheckSheets(checkSheets as any, "5F5L");
   }, [checkSheets]);
 
   const autonomousChecks = useMemo(() => {
-    return ProductionCalculations.transformCheckSheets(checkSheets, "AUTONOMOUS");
+    return ProductionCalculations.transformCheckSheets(checkSheets as any, "AUTONOMOUS");
   }, [checkSheets]);
 
   const m4Items = useMemo(() => {
-    return ProductionCalculations.calculateM4Items(skillRows, dtRaw, activeRun?.line_id);
+    return ProductionCalculations.calculateM4Items(skillRows as any, dtRaw as any, activeRun?.line_id);
   }, [skillRows, dtRaw, activeRun?.line_id]);
 
   const scwEvents = useMemo(() => {
-    return ProductionCalculations.transformSCWEvents(dtRaw);
+    return ProductionCalculations.transformSCWEvents(dtRaw as any);
   }, [dtRaw]);
 
   const skillMatrixData = useMemo(() => {
-    return ProductionCalculations.calculateSkillMatrix(skillRows, activeRun?.line_id);
+    return ProductionCalculations.calculateSkillMatrix(skillRows as any, activeRun?.line_id);
   }, [skillRows, activeRun?.line_id]);
 
   // Loading States
@@ -264,7 +264,7 @@ export function useMonitoringAlerts() {
   const { oeeMetrics, qualityMetrics, downtimeMetrics } = useMonitoringDashboard();
   
   const alerts = useMemo(() => {
-    const alertList = [];
+    const alertList: Array<{ id: string; type: "danger" | "warning"; title: string; message: string; timestamp: Date; acknowledged: boolean; actionRequired: boolean }> = [];
     
     // OEE Alerts
     if (oeeMetrics && oeeMetrics.oee < 65) {

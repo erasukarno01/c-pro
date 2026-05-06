@@ -56,7 +56,10 @@ export function useSubProcesses() {
         .select("id, name, code, line_id, lines(name)")
         .order("sort_order");
       if (error) throw error;
-      return (data ?? []) as { id: string; name: string; code: string; line_id: string; lines: { name: string } | null }[];
+      return ((data ?? []) as unknown as Array<{ id: string; name: string; code: string; line_id: string; lines: { name: string }[] | { name: string } | null }>).map((row) => ({
+        ...row,
+        lines: Array.isArray(row.lines) ? (row.lines[0] ?? null) : row.lines,
+      }));
     },
   });
 }

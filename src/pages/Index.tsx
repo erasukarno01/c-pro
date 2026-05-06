@@ -13,10 +13,10 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function IndexPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (loading) return;
     
     // Check for redirect target from query params (e.g., ?redirect=/some-path)
     const params = new URLSearchParams(location.search);
@@ -29,7 +29,7 @@ export default function IndexPage() {
       // Not authenticated: redirect to login
       navigate(`/login${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`, { replace: true });
     }
-  }, [user, isLoading, navigate, location.search]);
+  }, [user, loading, navigate, location.search]);
 
   // Loading state with branded styling
   return (

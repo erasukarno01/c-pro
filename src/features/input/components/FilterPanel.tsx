@@ -228,7 +228,7 @@ export function FilterPanel({
 
   // Generate filter tags
   const filterTags = useMemo(() => {
-    const tags = [];
+    const tags: Array<{ key: string; label: string }> = [];
     
     if (filters.search) {
       tags.push({ key: 'search', label: `Search: "${filters.search}"` });

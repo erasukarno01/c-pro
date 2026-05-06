@@ -91,6 +91,7 @@ export function useAutonomousCheckResults(shiftRunId: string, checkSession: "fir
           )
         `)
         .eq("shift_run_id", shiftRunId)
+        .eq("check_session", checkSession)
         .order("sort_order", { referencedTable: "autonomous_check_items", ascending: true });
       
       if (error) throw error;
@@ -117,7 +118,7 @@ export function useSubmitCheckResult() {
       checked_by_operator_id: string;
       check_session: "first" | "last";
     }) => {
-      const { shift_run_id, check_item_id, status, measured_value, note, photo_urls, checked_by_operator_id } = params;
+      const { shift_run_id, check_item_id, status, measured_value, note, photo_urls, checked_by_operator_id, check_session } = params;
 
       // Upsert result
       const { data, error } = await supabase
@@ -131,10 +132,11 @@ export function useSubmitCheckResult() {
             note,
             photo_urls,
             checked_by_operator_id,
+            check_session,
             started_at: status === "in_progress" ? new Date().toISOString() : undefined,
             completed_at: ["pass", "fail", "na"].includes(status) ? new Date().toISOString() : undefined,
           },
-          { onConflict: "shift_run_id,check_item_id,checked_by_operator_id" }
+          { onConflict: "shift_run_id,check_item_id,checked_by_operator_id,check_session" }
         )
         .select()
         .single();
@@ -169,12 +171,13 @@ export function useSubmitAllChecks() {
         status: item.status,
         measured_value: item.measured_value,
         checked_by_operator_id,
+        check_session,
         completed_at: ["pass", "fail", "na"].includes(item.status) ? now : undefined,
       }));
 
       const { data, error } = await supabase
         .from("autonomous_check_results")
-        .upsert(results, { onConflict: "shift_run_id,check_item_id,checked_by_operator_id" })
+        .upsert(results, { onConflict: "shift_run_id,check_item_id,checked_by_operator_id,check_session" })
         .select();
 
       if (error) throw error;

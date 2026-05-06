@@ -198,6 +198,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public'
     AND table_name = 'downtime_entries' 
     AND column_name = 'workstation_id'
   ) THEN

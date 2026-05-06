@@ -1,0 +1,12 @@
+﻿export const SHIFT_DURATION_MINUTES = 480;
+export const DEFAULT_HOURLY_TARGET = 150;
+export const DEFAULT_WI_COMPLIANCE_THRESHOLD = 80;
+export const MIN_SKILL_LEVEL = 2;
+export const PLANNED_SHIFT_MINUTES = 480;
+export const OEE_THRESHOLDS = { excellent: 85, good: 75, warning: 65, critical: 0 } as const;
+export const NG_THRESHOLDS = { excellent: 1, good: 2, acceptable: 5, critical: Infinity } as const;
+export const DOWNTIME_THRESHOLDS = { excellent: 5, good: 10, concerning: 20, critical: Infinity } as const;
+export const DEFAULT_PAGE_SIZE = 20;
+export const MAX_PAGE_SIZE = 100;
+export const QUERY_STALE_TIME = 30000;
+export const REFETCH_INTERVAL = 30000;

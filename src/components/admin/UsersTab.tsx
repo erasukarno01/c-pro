@@ -78,7 +78,7 @@ export function UsersTab() {
     ]);
     const byUser = new Map<string, UserRow>();
     (profs ?? []).forEach((p: Record<string, unknown>) =>
-      byUser.set(p.user_id as string, { ...p as UserRow, username: (p.username as string | null) ?? null, roles: [] })
+      byUser.set(p.user_id as string, { ...(p as unknown as UserRow), username: (p.username as string | null) ?? null, roles: [] })
     );
     (roles ?? []).forEach((r: Record<string, unknown>) => {
       const row = byUser.get(r.user_id as string);

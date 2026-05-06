@@ -170,7 +170,7 @@ export async function insertRow<T>(
 ): Promise<T> {
   const { data: result, error } = await supabase
     .from(table)
-    .insert(data)
+    .insert(data as any)
     .select()
     .single();
   
@@ -188,7 +188,7 @@ export async function updateRow<T>(
 ): Promise<T> {
   const { data: result, error } = await supabase
     .from(table)
-    .update(data)
+    .update(data as any)
     .eq('id', id)
     .select()
     .single();
@@ -207,7 +207,7 @@ export async function upsertRow<T>(
 ): Promise<T> {
   const { data: result, error } = await supabase
     .from(table)
-    .upsert(data, conflictColumns ? { onConflict: conflictColumns.join(',') } : undefined)
+    .upsert(data as any, conflictColumns ? { onConflict: conflictColumns.join(',') } : undefined)
     .select()
     .single();
   

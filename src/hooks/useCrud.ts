@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type AnyRow = Record<string, unknown>;
+type AnyRow = object;
 
 /** Generic list hook for any table with an `order by` column. */
 export function useTable<T extends AnyRow = AnyRow>(
@@ -37,7 +37,7 @@ function invalidateTable(qc: ReturnType<typeof useQueryClient>, table: string) {
 export function useUpsert(table: string, invalidateKey?: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: AnyRow & { id?: string }) => {
+    mutationFn: async (payload: Record<string, unknown> & { id?: string }) => {
       const { id, ...rest } = payload;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fn = id ? (supabase.from(table) as any).update(rest).eq("id", id).select().single()
